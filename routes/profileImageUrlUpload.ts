@@ -13,6 +13,8 @@ import { UserModel } from '../models/user'
 import * as utils from '../lib/utils'
 import logger from '../lib/logger'
 
+const ALLOWED_IMAGE_HOSTS = ['example.com', 'images.example.com']
+
 export function profileImageUrlUpload () {
   return async (req: Request, res: Response, next: NextFunction) => {
     if (req.body.imageUrl !== undefined) {
@@ -21,6 +23,18 @@ export function profileImageUrlUpload () {
       const loggedInUser = security.authenticatedUsers.get(req.cookies.token)
       if (loggedInUser) {
         try {
+          let parsedUrl: URL
+          try {
+            parsedUrl = new URL(url)
+          } catch {
+            throw new Error('invalid image URL')
+          }
+          if (!['http:', 'https:'].includes(parsedUrl.protocol)) {
+            throw new Error('unsupported URL protocol for image')
+          }
+          if (!ALLOWED_IMAGE_HOSTS.includes(parsedUrl.hostname)) {
+            throw new Error('hostname not allowed for image URL')
+          }
           const response = await fetch(url)
           if (!response.ok || !response.body) {
             throw new Error('url returned a non-OK status code or an empty body')
